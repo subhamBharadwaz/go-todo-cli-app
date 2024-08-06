@@ -1,4 +1,4 @@
-module todo-list
+module github.com/subhamBharadwaz/go-todo-cli-app
 
 go 1.22.4
 

@@ -8,7 +8,8 @@ import (
 	"os"
 	"text/tabwriter"
 	"time"
-	"todo-list/utils"
+
+	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
 
 	"github.com/mergestat/timediff"
 	"github.com/spf13/cobra"

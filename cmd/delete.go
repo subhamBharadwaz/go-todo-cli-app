@@ -6,7 +6,8 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
-	"todo-list/utils"
+
+	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
 
 	"github.com/spf13/cobra"
 )

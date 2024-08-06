@@ -4,7 +4,7 @@ Copyright © 2024 Subham Bharadwaz subhamsbharadwaz@gmail.com
 package main
 
 import (
-	"todo-list/cmd"
+	"github.com/subhamBharadwaz/go-todo-cli-app/cmd"
 )
 
 func main() {
