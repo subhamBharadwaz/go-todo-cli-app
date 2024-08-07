@@ -5,9 +5,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+
 	"strconv"
-	"text/tabwriter"
+
 	"time"
 
 	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
@@ -36,14 +36,16 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 			return
 		}
 
-		writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
+		var columns []string
 
 		// Print headers based on --all flag
 		if showAll {
-			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\tDone\t")
+			columns = append(columns, "ID", "Name", "Created", "Due", "Done")
 		} else {
-			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\t")
+			columns = append(columns, "ID", "Name", "Created", "Due")
 		}
+
+		var rows [][]string
 
 		for _, task := range tasks {
 			// Print task details based on --all flag
@@ -51,17 +53,31 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 			completed := strconv.FormatBool(task.Completed)
 
 			if showAll {
-				fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), task.DueDate, completed)
+				// fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), task.DueDate, completed)
+				rows = append(rows, []string{
+					fmt.Sprintf("%d", task.ID),
+					task.Description,
+					timediff.TimeDiff(createdTime),
+					task.DueDate,
+					completed,
+				})
 
-			} else {
-				// check if the done is "false"
-				if completed == "false" {
-					fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), task.DueDate)
-				}
+			} else if completed == "false" {
+
+				rows = append(rows, []string{
+					fmt.Sprintf("%d", task.ID),
+					task.Description,
+					timediff.TimeDiff(createdTime),
+					task.DueDate,
+				})
+
 			}
 
 		}
-		writer.Flush()
+
+		t := utils.CreateStyledTable(columns, rows)
+		fmt.Println(t)
+
 	},
 }
 

@@ -5,9 +5,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
-	"text/tabwriter"
 	"time"
 
 	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
@@ -46,16 +44,23 @@ Note: Ensure that the task ID provided is valid. This command will not prompt fo
 			return
 		}
 
-		// Display the updated task in a tabular format
-		writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
-		fmt.Fprintln(writer, "ID\tName\tCreated\tDone\tDue\t")
+		columns := []string{"Id", "Name", "Created", "Done", "Due"}
+
+		var row [][]string
 
 		createdTime, _ := time.Parse(time.RFC3339, task.CreatedAt)
 		completed := strconv.FormatBool(task.Completed)
 
-		fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), completed, task.DueDate)
+		row = append(row, []string{
+			fmt.Sprintf("%d", task.ID),
+			task.Description,
+			timediff.TimeDiff(createdTime),
+			completed,
+			task.DueDate,
+		})
 
-		writer.Flush()
+		t := utils.CreateStyledTable(columns, row)
+		fmt.Println(t)
 
 	},
 }

@@ -5,8 +5,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/mergestat/timediff"
@@ -39,14 +37,21 @@ This command updates the 'tasks.csv' file with the new todo item, including its 
 			fmt.Println("Error adding task:", err)
 		} else {
 
-			writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
-			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\t")
+			columns := []string{"Id", "Name", "Created", "Due"}
+
+			var row [][]string
 
 			createdTime, _ := time.Parse(time.RFC3339, task.CreatedAt)
 
-			fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), dueDate)
+			row = append(row, []string{
+				fmt.Sprintf("%d", task.ID),
+				task.Description,
+				timediff.TimeDiff(createdTime),
+				task.DueDate,
+			})
 
-			writer.Flush()
+			t := utils.CreateStyledTable(columns, row)
+			fmt.Println(t)
 		}
 	},
 }
