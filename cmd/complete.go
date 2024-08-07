@@ -4,9 +4,9 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/csv"
 	"fmt"
 	"os"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -34,20 +34,29 @@ Note: Ensure that the task ID provided is valid. This command will not prompt fo
 			return
 		}
 
-		id := args[0]
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			fmt.Println("Invalid task ID:", err)
+			return
+		}
+
 		task, err := completeTask(id)
 		if err != nil {
-			fmt.Println("Error completing task:", err)
-		} else {
-			writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
-			fmt.Fprintln(writer, "ID\tName\tCreated\tDone\t")
-
-			createdTime, _ := time.Parse(time.RFC3339, task[2])
-
-			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), task[3])
-
-			writer.Flush()
+			fmt.Println("Error marking task as completed:", err)
+			return
 		}
+
+		// Display the updated task in a tabular format
+		writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
+		fmt.Fprintln(writer, "ID\tName\tCreated\tDone\tDue\t")
+
+		createdTime, _ := time.Parse(time.RFC3339, task.CreatedAt)
+		completed := strconv.FormatBool(task.Completed)
+
+		fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), completed, task.DueDate)
+
+		writer.Flush()
+
 	},
 }
 
@@ -55,52 +64,20 @@ func init() {
 	rootCmd.AddCommand(completeCmd)
 }
 
-func completeTask(id string) ([]string, error) {
-	file, err := utils.LoadFile("tasks.csv")
+func completeTask(id int) (Task, error) {
+
+	_, err := utils.DB.Exec("UPDATE tasks SET completed = ? WHERE id= ?", true, id)
 	if err != nil {
-		return nil, err
+		return Task{}, err
 	}
-	defer utils.CloseFile(file)
 
-	// Read existing tasks
-	tasks, err := utils.ReadTasks(file)
+	// Retrieve the updated task
+	var task Task
+	row := utils.DB.QueryRow("SELECT id, description,created_at,due_date,completed FROM tasks WHERE id = ?", id)
+	err = row.Scan(&task.ID, &task.Description, &task.CreatedAt, &task.DueDate, &task.Completed)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read tasks: %w", err)
+		return Task{}, err
 	}
 
-	// Find task and add complete as true with the given ID
-	var updatedTasks [][]string
-	var updatedTask []string
-	var found bool
-	for _, task := range tasks {
-		if task[0] == id {
-			found = true
-			if len(task) >= 4 {
-				task[3] = "true"
-			} else {
-				return nil, fmt.Errorf("task format is invalid, no done column found")
-			}
-			updatedTask = task
-		}
-		updatedTasks = append(updatedTasks, task)
-	}
-
-	if !found {
-		return nil, fmt.Errorf("task with ID %s not found", id)
-	}
-
-	// Write updated task back to file
-	if err := file.Truncate(0); err != nil {
-		return nil, fmt.Errorf("failed to truncate file: %w", err)
-	}
-	if _, err := file.Seek(0, 0); err != nil {
-		return nil, fmt.Errorf("failed to seek file: %w", err)
-	}
-
-	writer := csv.NewWriter(file)
-	if err := writer.WriteAll(updatedTasks); err != nil {
-		return nil, fmt.Errorf("failed to write tasks: %w", err)
-	}
-	writer.Flush()
-	return updatedTask, nil
+	return task, nil
 }

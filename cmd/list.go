@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -29,16 +30,9 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 		// Check if the -all flag is set
 		showAll, _ := cmd.Flags().GetBool("all")
 
-		file, err := utils.LoadFile("tasks.csv")
+		tasks, err := getAllTasks()
 		if err != nil {
-			fmt.Println("Error loading tasks:", err)
-			return
-		}
-		defer utils.CloseFile(file)
-
-		uncompletedTasks, err := utils.ReadTasks(file)
-		if err != nil {
-			fmt.Println("Error reading tasks", err)
+			fmt.Println("Error fetching tasks:", err)
 			return
 		}
 
@@ -51,17 +45,18 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\t")
 		}
 
-		for _, task := range uncompletedTasks {
+		for _, task := range tasks {
 			// Print task details based on --all flag
-			createdTime, _ := time.Parse(time.RFC3339, task[2])
+			createdTime, _ := time.Parse(time.RFC3339, task.CreatedAt)
+			completed := strconv.FormatBool(task.Completed)
 
 			if showAll {
-				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), task[3], task[4])
+				fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), task.DueDate, completed)
 
 			} else {
 				// check if the done is "false"
-				if len(task) > 3 && task[4] == "false" {
-					fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), task[3])
+				if completed == "false" {
+					fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), task.DueDate)
 				}
 			}
 
@@ -73,4 +68,25 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 func init() {
 	rootCmd.AddCommand(listCmd)
 	listCmd.Flags().BoolP("all", "a", false, "Show all tasks, including completed ones")
+}
+
+func getAllTasks() ([]Task, error) {
+	rows, err := utils.DB.Query("SELECT id, description, created_at, due_date, completed FROM tasks")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []Task
+	for rows.Next() {
+		var task Task
+		err = rows.Scan(&task.ID, &task.Description, &task.CreatedAt, &task.DueDate, &task.Completed)
+
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+
+	}
+	return tasks, nil
 }

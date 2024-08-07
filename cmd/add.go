@@ -4,17 +4,14 @@ Copyright © 2024 Subham Bharadwaz subhamsbharadwaz@gmail.com
 package cmd
 
 import (
-	"encoding/csv"
 	"fmt"
 	"os"
-	"strconv"
 	"text/tabwriter"
 	"time"
 
-	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
-
 	"github.com/mergestat/timediff"
 	"github.com/spf13/cobra"
+	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
 )
 
 // addCmd represents the add command
@@ -45,9 +42,9 @@ This command updates the 'tasks.csv' file with the new todo item, including its 
 			writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
 			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\t")
 
-			createdTime, _ := time.Parse(time.RFC3339, task[2])
+			createdTime, _ := time.Parse(time.RFC3339, task.CreatedAt)
 
-			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), dueDate)
+			fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t\n", task.ID, task.Description, timediff.TimeDiff(createdTime), dueDate)
 
 			writer.Flush()
 		}
@@ -60,44 +57,37 @@ func init() {
 
 }
 
-func addTask(description string, dueDate string) ([]string, error) {
-	file, err := utils.LoadFile("tasks.csv")
-	if err != nil {
-		return nil, err
-	}
-	defer utils.CloseFile(file)
+type Task struct {
+	ID          int
+	Description string
+	CreatedAt   string
+	DueDate     string
+	Completed   bool
+}
 
-	// Read existing tasks to determine the next ID
-	existingTasks, err := utils.ReadTasks(file)
-	if err != nil {
-		return nil, err
+func addTask(description string, dueDate string) (Task, error) {
+	if utils.DB == nil {
+		return Task{}, fmt.Errorf("database is not initialized")
 	}
-
-	// Determine the next ID
-	nextID := 1
-	if len(existingTasks) > 0 {
-		lastTask := existingTasks[len(existingTasks)-1]
-		lastID, err := strconv.Atoi(lastTask[0])
-		if err != nil {
-			return nil, err
-		}
-		nextID = lastID + 1
-	}
-
-	// Create a new CSV writer
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
 
 	// Get the current time
-	createdTime := time.Now().Format(time.RFC3339)
+	createdAt := time.Now().Format(time.RFC3339)
 
-	// task done
-	complete := "false"
+	result, err := utils.DB.Exec("INSERT INTO tasks (description, created_at, due_date, completed) VALUES (?, ?, ?, ?)", description, createdAt, dueDate, false)
+	if err != nil {
+		return Task{}, fmt.Errorf("failed to insert task: %v", err)
+	}
 
-	// Write the task description to the CSV file
-	task := []string{strconv.Itoa(nextID), description, createdTime, dueDate, complete}
-	if err := writer.Write(task); err != nil {
-		return nil, err
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Task{}, fmt.Errorf("failed to get last insert ID: %v", err)
+	}
+
+	task := Task{
+		ID:          int(id),
+		Description: description,
+		CreatedAt:   createdAt,
+		DueDate:     dueDate,
 	}
 
 	return task, nil

@@ -4,8 +4,8 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/csv"
 	"fmt"
+	"strconv"
 
 	"github.com/subhamBharadwaz/go-todo-cli-app/utils"
 
@@ -28,12 +28,17 @@ This command searches for the todo item with the specified ID, deletes it if fou
 			return
 		}
 
-		id := args[0]
-		if err := deleteTask(id); err != nil {
-			fmt.Println("Error deleting task:", err)
-		} else {
-			fmt.Println("Task deleted successfully.")
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			fmt.Println("Invalid task ID", err)
+			return
 		}
+		err = deleteTask(id)
+		if err != nil {
+			fmt.Println("Error deleting task", err)
+			return
+		}
+		fmt.Printf("Task with ID %d has been deleted\n", id)
 	},
 }
 
@@ -41,47 +46,10 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 }
 
-func deleteTask(id string) error {
-	file, err := utils.LoadFile("tasks.csv")
+func deleteTask(id int) error {
+	_, err := utils.DB.Exec("DELETE FROM tasks WHERE id = ?", id)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+		return err
 	}
-	defer utils.CloseFile(file)
-
-	// Read existing tasks
-	tasks, err := utils.ReadTasks(file)
-	if err != nil {
-		return fmt.Errorf("failed to read tasks: %w", err)
-	}
-
-	// Find and remove the task with the given ID
-	var updatedTasks [][]string
-	var found bool
-	for _, task := range tasks {
-		if task[0] == id {
-			found = true
-			continue
-		}
-		updatedTasks = append(updatedTasks, task)
-	}
-
-	if !found {
-		return fmt.Errorf("task with ID %s not found", id)
-	}
-
-	// Write updated tasks back to file
-	if err := file.Truncate(0); err != nil {
-		return fmt.Errorf("failed to truncate file: %w", err)
-	}
-	if _, err := file.Seek(0, 0); err != nil {
-		return fmt.Errorf("failed to seek file: %w", err)
-	}
-
-	writer := csv.NewWriter(file)
-	if err := writer.WriteAll(updatedTasks); err != nil {
-		return fmt.Errorf("failed to write tasks: %w", err)
-	}
-
-	writer.Flush()
 	return nil
 }
