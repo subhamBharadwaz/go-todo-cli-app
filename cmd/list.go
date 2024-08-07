@@ -46,9 +46,9 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 
 		// Print headers based on --all flag
 		if showAll {
-			fmt.Fprintln(writer, "ID\tName\tCreated\tDone\t")
+			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\tDone\t")
 		} else {
-			fmt.Fprintln(writer, "ID\tName\tCreated\t")
+			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\t")
 		}
 
 		for _, task := range uncompletedTasks {
@@ -56,12 +56,12 @@ This command reads from the 'tasks.csv' file and formats the output in a tabular
 			createdTime, _ := time.Parse(time.RFC3339, task[2])
 
 			if showAll {
-				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), task[3])
+				fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), task[3], task[4])
 
 			} else {
 				// check if the done is "false"
-				if len(task) > 3 && task[3] == "false" {
-					fmt.Fprintf(writer, "%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime))
+				if len(task) > 3 && task[4] == "false" {
+					fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), task[3])
 				}
 			}
 

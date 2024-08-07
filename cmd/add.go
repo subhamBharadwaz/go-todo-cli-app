@@ -29,23 +29,25 @@ Example usage:
 This command updates the 'tasks.csv' file with the new todo item, including its ID, description, and creation time. The task is appended to the end of the file, and the newly added task is displayed in a tabular format upon successful addition.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		if len(args) == 0 {
+		if len(args) < 1 {
 			fmt.Println("Please provide a task description.")
 			return
 		}
 
 		description := args[0]
-		task, err := addTask(description)
+		dueDate, _ := cmd.Flags().GetString("due")
+
+		task, err := addTask(description, dueDate)
 		if err != nil {
 			fmt.Println("Error adding task:", err)
 		} else {
 
 			writer := tabwriter.NewWriter(os.Stdout, 0, 2, 4, ' ', 0)
-			fmt.Fprintln(writer, "ID\tName\tCreated\t")
+			fmt.Fprintln(writer, "ID\tName\tCreated\tDue\t")
 
 			createdTime, _ := time.Parse(time.RFC3339, task[2])
 
-			fmt.Fprintf(writer, "%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime))
+			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", task[0], task[1], timediff.TimeDiff(createdTime), dueDate)
 
 			writer.Flush()
 		}
@@ -54,10 +56,11 @@ This command updates the 'tasks.csv' file with the new todo item, including its 
 
 func init() {
 	rootCmd.AddCommand(addCmd)
+	addCmd.Flags().String("due", "", "Specify the due date for the task")
 
 }
 
-func addTask(description string) ([]string, error) {
+func addTask(description string, dueDate string) ([]string, error) {
 	file, err := utils.LoadFile("tasks.csv")
 	if err != nil {
 		return nil, err
@@ -92,7 +95,7 @@ func addTask(description string) ([]string, error) {
 	complete := "false"
 
 	// Write the task description to the CSV file
-	task := []string{strconv.Itoa(nextID), description, createdTime, complete}
+	task := []string{strconv.Itoa(nextID), description, createdTime, dueDate, complete}
 	if err := writer.Write(task); err != nil {
 		return nil, err
 	}
